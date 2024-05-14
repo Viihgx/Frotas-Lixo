@@ -50,7 +50,7 @@
   }
   
   .form-container button:hover {
-    background-color: var(--color-primary-soft);
+    background-color: var(--color-secondary);
   }
   
   /* Estilo para a lista de rotas existentes */
