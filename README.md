@@ -1,4 +1,4 @@
-# React + TypeScript + Vite + Leaflet React
+# React + TypeScript + Vite + Leaflet React + SupaBase
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
