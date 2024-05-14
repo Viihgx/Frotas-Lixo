@@ -1,0 +1,15 @@
+* {
+    padding: 0;
+    margin: 0;
+}
+
+body::-webkit-scrollbar {
+    display: none;
+}
+
+:root {
+    --color-primary: #1A4D2E;
+    --color-secondary: #4F6F52;
+    --background-color: #E8DFCA;
+    --background-color-soft: #F5EFE6;
+}
