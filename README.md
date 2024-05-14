@@ -11,6 +11,6 @@ O projeto "Rotas de Coleta de Lixo em Fortaleza" é uma aplicação desenvolvida
 
 # Funcionalidades Previstas
 
-Visualização de Mapa: Integração de mapas para exibir as rotas de coleta de lixo em Fortaleza, permitindo aos administradores visualizar as áreas cobertas e os itinerários das rotas.
-Gerenciamento de Rotas: Capacidade de adicionar, editar e excluir rotas de coleta de lixo, possibilitando aos administradores do sistema ajustar as rotas conforme necessário.
+- Visualização de Mapa: Integração de mapas para exibir as rotas de coleta de lixo em Fortaleza, permitindo aos administradores visualizar as áreas cobertas e os itinerários das rotas.
+- Gerenciamento de Rotas: Capacidade de adicionar, editar e excluir rotas de coleta de lixo, possibilitando aos administradores do sistema ajustar as rotas conforme necessário.
 
