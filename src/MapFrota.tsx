@@ -1,108 +1,122 @@
-import React from 'react';
-import { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-import { obterRotas, adicionarRota } from './db/db';
-import './MapFrota.css';
-import CustomIcon from './components/CustomIcon';
+import React, { useState, useEffect, FormEvent } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import axios from 'axios';
 
-
-const MapFrota = () => {
-    const [rotas, setRotas] = useState<Array<{bairro: string, horario_coleta: string, dia_coleta: string}>>([]);
-    const [bairro, setBairro] = useState<string>('');
-    const [horarioColeta, setHorarioColeta] = useState<string>('');
-    const [diaColeta, setDiaColeta] = useState<string>('');
-
-    useEffect(() => {
-        async function fetchRotas() {
-            const rotasDoBanco = await obterRotas();
-            setRotas(rotasDoBanco);
-        }
-        fetchRotas();
-    }, []);
-
-    const coordenadasBairros = {
-        "Benfica": [-3.731629, -38.537982],
-        "Bom Futuro": [-3.757487, -38.579269],
-        "Couto Fernandes": [-3.795671, -38.540817],
-        "Damas": [-3.746199, -38.557899],
-        "Demócrito Rocha": [-3.794967, -38.570228],
-        "Dendê": [-3.819089, -38.557539],
-        "Fátima": [-3.732517, -38.523741],
-        "Itaoca": [-3.767744, -38.614155],
-        "Itaperi": [-3.796613, -38.593869],
-        "Jardim América": [-3.788533, -38.520517],
-        "José Bonifácio": [-3.746927, -38.562729],
-        "Montese": [-3.780896, -38.547322],
-        "Panamericano": [-3.789855, -38.538558],
-        "Parangaba": [-3.784512, -38.527107],
-        "Parreão": [-3.759870, -38.522673],
-        "Serrinha": [-3.781619, -38.529612],
-        "Vila Peri": [-3.814948, -38.560289],
-        "Vila União": [-3.728360, -38.546897]
-    };
-
-    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        await adicionarRota(bairro, horarioColeta, diaColeta);
-        setBairro('');
-        setHorarioColeta('');
-        setDiaColeta('');
-    };
-
-    return (
-        <div className='container-master'>
-            <MapContainer center={[-3.7322409, -38.5278619]} zoom={12} style={{ height: '500px', width: '100%' }}>
-                <TileLayer
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
-                {Object.entries(coordenadasBairros).map(([nomeBairro, coordenadas]) => (
-                    <Marker key={nomeBairro} position={[coordenadas[0], coordenadas[1]]} icon={CustomIcon}>
-                        <Popup>{nomeBairro}</Popup>
-                    </Marker>
-                ))}
-            </MapContainer>
-            <div className='container-main-results'>
-                <div className="form-container">
-                    <h2>Adicione uma rota ao banco de dados:</h2>
-                    <form onSubmit={handleSubmit}>
-                        <label>Bairro:</label>
-                        <input type="text" value={bairro} onChange={(e) => setBairro(e.target.value)} />
-
-                        <label>Horário de Coleta:</label>
-                        <input type="text" value={horarioColeta} onChange={(e) => setHorarioColeta(e.target.value)} />
-
-                        <label>Dia de Coleta:</label>
-                        <input type="text" value={diaColeta} onChange={(e) => setDiaColeta(e.target.value)} />
-
-                        <button type="submit">Adicionar Rota</button>
-                    </form>
-                </div>
-
-                <div className="routes-container">
-                    <h2>Rotas existentes:</h2>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Bairro</th>
-                                <th>Horário de Coleta</th>
-                                <th>Dia de Coleta</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {rotas.map((rota, index) => (
-                                <tr key={index}>
-                                    <td>{rota.bairro}</td>
-                                    <td>{rota.horario_coleta}</td>
-                                    <td>{rota.dia_coleta}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    );
+// Configurar o ícone padrão do Leaflet
+interface DefaultIconPrototype extends L.Icon.Default {
+  _getIconUrl?: string;
 }
 
-export default MapFrota;
+delete (L.Icon.Default.prototype as DefaultIconPrototype)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+});
+
+interface Coordinates {
+  lat: number;
+  lon: number;
+}
+
+const App: React.FC = () => {
+  const [startCoordinates, setStartCoordinates] = useState<Coordinates | null>(null);
+  const [endCoordinates, setEndCoordinates] = useState<Coordinates | null>(null);
+  const [route, setRoute] = useState<Coordinates[]>([]);
+
+  useEffect(() => {
+    fetchRouteFromDB();
+  }, []);
+
+  const fetchRouteFromDB = async () => {
+    const response = await axios.get('http://localhost:5000/api/routes');
+    const data = response.data[0];
+    if (data) {
+      setStartCoordinates(data.start_bairro);
+      setEndCoordinates(data.end_bairro);
+      setRoute(data.route);
+    }
+  };
+
+  const saveRouteToDB = async (start: Coordinates, end: Coordinates, route: Coordinates[]) => {
+    await axios.post('http://localhost:5000/api/routes', {
+      start_bairro: start,
+      end_bairro: end,
+      route: route
+    });
+  };
+
+  const fetchCoordinates = async (bairro: string): Promise<Coordinates | null> => {
+    const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${bairro},Fortaleza`);
+    const data = await response.json();
+    if (data.length > 0) {
+      const { lat, lon } = data[0];
+      return { lat: parseFloat(lat), lon: parseFloat(lon) };
+    }
+    return null;
+  };
+
+  const fetchRoute = async (start: Coordinates, end: Coordinates) => {
+    const response = await fetch(
+      `http://router.project-osrm.org/route/v1/driving/${start.lon},${start.lat};${end.lon},${end.lat}?geometries=geojson`
+    );
+    const data = await response.json();
+    if (data.routes.length > 0) {
+      const routeCoordinates = data.routes[0].geometry.coordinates.map((coord: [number, number]) => ({
+        lat: coord[1],
+        lon: coord[0]
+      }));
+      setRoute(routeCoordinates);
+      saveRouteToDB(start, end, routeCoordinates);
+    }
+  };
+
+  const handleRouteSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const startBairro = (e.currentTarget.elements.namedItem('startBairro') as HTMLInputElement).value;
+    const endBairro = (e.currentTarget.elements.namedItem('endBairro') as HTMLInputElement).value;
+
+    const startCoords = await fetchCoordinates(startBairro);
+    const endCoords = await fetchCoordinates(endBairro);
+
+    if (startCoords && endCoords) {
+      setStartCoordinates(startCoords);
+      setEndCoordinates(endCoords);
+      fetchRoute(startCoords, endCoords);
+    }
+  };
+
+  return (
+    <div>
+      <form onSubmit={handleRouteSubmit}>
+        <input type="text" name="startBairro" placeholder="Digite o bairro de origem" />
+        <input type="text" name="endBairro" placeholder="Digite o bairro de destino" />
+        <button type="submit">Adicionar Rota</button>
+      </form>
+      <MapContainer center={[-3.71722, -38.54333]} zoom={13} style={{ height: '600px', width: '100%' }}>
+        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+        {startCoordinates && (
+          <Marker position={[startCoordinates.lat, startCoordinates.lon]}>
+            <Popup>
+              Origem: {startCoordinates.lat}, {startCoordinates.lon}
+            </Popup>
+          </Marker>
+        )}
+        {endCoordinates && (
+          <Marker position={[endCoordinates.lat, endCoordinates.lon]}>
+            <Popup>
+              Destino: {endCoordinates.lat}, {endCoordinates.lon}
+            </Popup>
+          </Marker>
+        )}
+        {route.length > 0 && (
+          <Polyline positions={route.map(coord => [coord.lat, coord.lon])} color="blue" />
+        )}
+      </MapContainer>
+    </div>
+  );
+};
+
+export default App;
