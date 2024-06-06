@@ -193,6 +193,7 @@ const App: React.FC = () => {
       </MapContainer>
     <div className='box-content'>
       <form onSubmit={handleBairroSubmit}>
+        <h3>Adiciona Bairro:</h3>
         <input type="text" name="bairroName" placeholder="Nome do Bairro" ref={bairroNameRef} />
         <select name="coletaType" ref={coletaTypeRef}>
           <option value="">Tipo de Coleta</option>
