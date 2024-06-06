@@ -1,8 +1,9 @@
 import React, { useState, useEffect, FormEvent, useCallback, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polygon } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import axios from 'axios';
+import Select, { MultiValue } from 'react-select';
 import './App.css';
 
 // Configurar o ícone padrão do Leaflet
@@ -22,19 +23,61 @@ interface Coordinates {
   lon: number;
 }
 
-interface Route {
+interface Bairro {
   id: string;
-  start_bairro: string;
-  end_bairro: string;
-  route: Coordinates[];
-  startCoords: Coordinates;
-  endCoords: Coordinates;
+  bairro_name: string;
+  coleta_type: string;
+  inicio_coleta: string;
+  dias_coleta: string[];
+  coordinates: Coordinates[];
 }
 
+interface ApiBairro {
+  id: string;
+  bairro_name: string;
+  coleta_type: string;
+  inicio_coleta: string;
+  dias_coleta: string;
+  coordinates: Coordinates[];
+}
+
+const greenIcon = new L.Icon({
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+  className: 'leaflet-green-icon'
+});
+
+const blueIcon = new L.Icon({
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+  className: 'leaflet-blue-icon'
+});
+
+
 const App: React.FC = () => {
-  const [routes, setRoutes] = useState<Route[]>([]);
-  const startBairroRef = useRef<HTMLInputElement>(null);
-  const endBairroRef = useRef<HTMLInputElement>(null);
+  const [bairros, setBairros] = useState<Bairro[]>([]);
+  const bairroNameRef = useRef<HTMLInputElement>(null);
+  const coletaTypeRef = useRef<HTMLSelectElement>(null);
+  const inicioColetaRef = useRef<HTMLSelectElement>(null);
+  const [selectedDias, setSelectedDias] = useState<{ label: string, value: string }[]>([]);
+
+  const diasDaSemana = [
+    { value: 'Segunda', label: 'Segunda' },
+    { value: 'Terça', label: 'Terça' },
+    { value: 'Quarta', label: 'Quarta' },
+    { value: 'Quinta', label: 'Quinta' },
+    { value: 'Sexta', label: 'Sexta' },
+    { value: 'Sábado', label: 'Sábado' },
+    { value: 'Domingo', label: 'Domingo' }
+  ];
 
   const fetchCoordinates = async (bairro: string): Promise<Coordinates | null> => {
     const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${bairro},Fortaleza`);
@@ -46,129 +89,136 @@ const App: React.FC = () => {
     return null;
   };
 
-  const fetchRoutesFromDB = useCallback(async () => {
+  const fetchBairrosFromDB = useCallback(async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/routes');
-      const data: Route[] = response.data;
-      const fetchedRoutes: Route[] = await Promise.all(data.map(async (route) => {
-        const startCoords = await fetchCoordinates(route.start_bairro);
-        const endCoords = await fetchCoordinates(route.end_bairro);
-        return {
-          ...route,
-          startCoords: startCoords ? startCoords : { lat: 0, lon: 0 },
-          endCoords: endCoords ? endCoords : { lat: 0, lon: 0 },
-          route: route.route.map((coord: Coordinates) => ({
-            lat: coord.lat,
-            lon: coord.lon
-          }))
-        };
+      const response = await axios.get('http://localhost:5000/api/bairros');
+      const data: ApiBairro[] = response.data;
+      const fetchedBairros: Bairro[] = data.map((bairro) => ({
+        ...bairro,
+        dias_coleta: bairro.dias_coleta.split(',').map(dia => dia.trim())
       }));
-      setRoutes(fetchedRoutes);
+      setBairros(fetchedBairros);
     } catch (error) {
-      console.error('Error fetching routes from DB:', error);
+      console.error('Error fetching bairros from DB:', error);
     }
   }, []);
 
   useEffect(() => {
-    fetchRoutesFromDB();
-  }, [fetchRoutesFromDB]);
+    fetchBairrosFromDB();
+  }, [fetchBairrosFromDB]);
 
-  const saveRouteToDB = async (startBairro: string, endBairro: string, route: Coordinates[]) => {
+  const saveBairroToDB = async (bairro: Bairro) => {
     try {
-      const response = await axios.post('http://localhost:5000/api/routes', {
-        start_bairro: startBairro,
-        end_bairro: endBairro,
-        route: route
+      const response = await axios.post('http://localhost:5000/api/bairros', {
+        ...bairro,
+        dias_coleta: bairro.dias_coleta.join(', ')
       });
-      console.log('Saved route to DB:', response.data);
+      const savedBairro: ApiBairro = response.data[0];
+      const coordinates = await fetchCoordinates(savedBairro.bairro_name);
+      if (coordinates) {
+        const newBairro: Bairro = {
+          ...savedBairro,
+          coordinates: [coordinates],
+          dias_coleta: savedBairro.dias_coleta.split(',').map(dia => dia.trim())
+        };
+        setBairros(prevBairros => [...prevBairros, newBairro]);
+      }
+      console.log('Saved bairro to DB:', response.data);
     } catch (error) {
-      console.error('Error saving route to DB:', error);
+      console.error('Error saving bairro to DB:', error);
     }
   };
 
-  const fetchRoute = async (start: Coordinates, end: Coordinates, startBairro: string, endBairro: string) => {
-    const response = await fetch(
-      `http://router.project-osrm.org/route/v1/driving/${start.lon},${start.lat};${end.lon},${end.lat}?geometries=geojson`
-    );
-    const data = await response.json();
-    if (data.routes.length > 0) {
-      const routeCoordinates = data.routes[0].geometry.coordinates.map((coord: [number, number]) => ({
-        lat: coord[1],
-        lon: coord[0]
-      }));
-      const newRoute: Route = { 
-        id: '', 
-        start_bairro: startBairro, 
-        end_bairro: endBairro, 
-        route: routeCoordinates,
-        startCoords: start,
-        endCoords: end 
-      };
-      setRoutes(prevRoutes => [...prevRoutes, newRoute]);
-      saveRouteToDB(startBairro, endBairro, routeCoordinates);
-    }
-  };
-
-  const handleRouteSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  const handleBairroSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const startBairro = startBairroRef.current?.value ?? '';
-    const endBairro = endBairroRef.current?.value ?? '';
+    const bairro_name = bairroNameRef.current?.value ?? '';
+    const coleta_type = coletaTypeRef.current?.value ?? '';
+    const inicio_coleta = inicioColetaRef.current?.value ?? '';
+    const dias_coleta = selectedDias.map(option => option.value);
 
-    const startCoords = await fetchCoordinates(startBairro);
-    const endCoords = await fetchCoordinates(endBairro);
+    const newBairro: Bairro = { id: '', bairro_name, coleta_type, inicio_coleta, dias_coleta, coordinates: [] };
+    await saveBairroToDB(newBairro);
 
-    if (startCoords && endCoords) {
-      await fetchRoute(startCoords, endCoords, startBairro, endBairro);
-      if (startBairroRef.current) startBairroRef.current.value = '';
-      if (endBairroRef.current) endBairroRef.current.value = '';
-    }
+    if (bairroNameRef.current) bairroNameRef.current.value = '';
+    if (coletaTypeRef.current) coletaTypeRef.current.value = '';
+    if (inicioColetaRef.current) inicioColetaRef.current.value = '';
+    setSelectedDias([]);
+  };
+
+  const handleDiasChange = (newValue: MultiValue<{ label: string; value: string }>) => {
+    setSelectedDias(newValue as { label: string, value: string }[]);
   };
 
   return (
     <div className='container'>
       <MapContainer className='map-container' center={[-3.71722, -38.54333]} zoom={13}>
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-        {routes.map((route, index) => (
+        {bairros.map((bairro, index) => (
           <React.Fragment key={index}>
-            <Marker position={[route.startCoords.lat, route.startCoords.lon]}>
-              <Popup>
-                Origem: {route.start_bairro}
-              </Popup>
-            </Marker>
-            <Marker position={[route.endCoords.lat, route.endCoords.lon]}>
-              <Popup>
-                Destino: {route.end_bairro}
-              </Popup>
-            </Marker>
-            <Polyline positions={route.route.map(coord => [coord.lat, coord.lon])} color="blue" />
+            {bairro.coordinates.length > 0 && (
+              <Marker 
+                position={[bairro.coordinates[0].lat, bairro.coordinates[0].lon]}
+                icon={bairro.coleta_type === 'diurna' ? greenIcon : blueIcon}
+              >
+                <Popup>
+                  <strong>{bairro.bairro_name}</strong><br />
+                  Coleta: {bairro.coleta_type}<br />
+                  Início: {bairro.inicio_coleta}<br />
+                  Dias: {bairro.dias_coleta.join(', ')}
+                </Popup>
+              </Marker>
+            )}
+            {bairro.coordinates.length > 0 && (
+              <Polygon 
+                positions={bairro.coordinates.map(coord => [coord.lat, coord.lon])}
+                color={bairro.coleta_type === 'diurna' ? 'green' : 'blue'}
+              />
+            )}
           </React.Fragment>
         ))}
       </MapContainer>
-      <div className='box'>
-      <form onSubmit={handleRouteSubmit}>
-        <input type="text" name="startBairro" placeholder="Digite o bairro de origem" ref={startBairroRef} />
-        <input type="text" name="endBairro" placeholder="Digite o bairro de destino" ref={endBairroRef} />
-        <button type="submit">Adicionar Rota</button>
+      <div className='box-content'>
+      <form onSubmit={handleBairroSubmit}>
+        <input type="text" name="bairroName" placeholder="Nome do Bairro" ref={bairroNameRef} />
+        <select name="coletaType" ref={coletaTypeRef}>
+          <option value="">Tipo de Coleta</option>
+          <option value="diurna">Diurna</option>
+          <option value="noturna">Noturna</option>
+        </select>
+        <select name="inicioColeta" ref={inicioColetaRef}>
+          <option value="">Horário de Início da Coleta</option>
+          <option value="6:20AM">6:20 AM</option>
+          <option value="19:00PM">19:00 PM</option>
+        </select>
+        <Select 
+          name="diasColeta" 
+          value={selectedDias} 
+          onChange={handleDiasChange} 
+          options={diasDaSemana} 
+          isMulti 
+          placeholder="Dias de Coleta"
+        />
+        <button type="submit">Adicionar Bairro</button>
       </form>
-        <div className="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>Bairro de Origem</th>
-                <th>Bairro de Destino</th>
+      <div className="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Bairro</th>
+              <th>Tipo de Coleta</th>
+            </tr>
+          </thead>
+          <tbody>
+            {bairros.map((bairro, index) => (
+              <tr key={index}>
+                <td>{bairro.bairro_name}</td>
+                <td>{bairro.coleta_type}</td>
               </tr>
-            </thead>
-            <tbody>
-              {routes.map((route, index) => (
-                <tr key={index}>
-                  <td>{route.start_bairro}</td>
-                  <td>{route.end_bairro}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          </div>
+            ))}
+          </tbody>
+        </table>
       </div>
+    </div>
     </div>
   );
 };

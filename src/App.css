@@ -20,7 +20,7 @@ body {
     margin-bottom: 50px;
   }
 
-  .box {
+  .box-content {
     display: flex;
     flex-direction: row;
     width: 100%;
@@ -37,7 +37,7 @@ body {
     max-width: 500px;
   }
   
-  form input {
+  form input, form select, form textarea {
     width: 100%;
     padding: 10px;
     margin: 5px 0;
@@ -89,3 +89,12 @@ body {
   th {
     background-color: var(--color-secondary);
   }
+
+  .leaflet-green-icon {
+    filter: hue-rotate(180deg);
+  }
+  
+  .leaflet-blue-icon {
+    filter: hue-rotate(240deg);
+  }
+  

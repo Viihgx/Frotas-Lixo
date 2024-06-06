@@ -13,23 +13,37 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 app.use(cors());
 app.use(express.json());
 
-app.get('/api/routes', async (req, res) => {
-  const { data, error } = await supabase.from('rotas').select('*');
+// Endpoint para buscar todos os bairros
+app.get('/api/bairros', async (req, res) => {
+  const { data, error } = await supabase.from('bairros').select('*');
   if (error) {
     return res.status(500).json({ error: error.message });
   }
   res.json(data);
 });
 
-app.post('/api/routes', async (req, res) => {
-  const { start_bairro, end_bairro, route } = req.body;
-  const { data, error } = await supabase.from('rotas').insert([
-    { start_bairro, end_bairro, route },
-  ]);
-  if (error) {
-    return res.status(500).json({ error: error.message });
+// Endpoint para adicionar um novo bairro
+app.post('/api/bairros', async (req, res) => {
+  const { bairro_name, coleta_type, inicio_coleta, dias_coleta } = req.body;
+  
+  // Fetch coordinates for the bairro
+  const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${bairro_name},Fortaleza`);
+  const data = await response.json();
+  if (data.length > 0) {
+    const { lat, lon } = data[0];
+    const coordinates = [{ lat: parseFloat(lat), lon: parseFloat(lon) }]; // You can modify this to get the actual boundaries
+
+    const { data: insertData, error: insertError } = await supabase.from('bairros').insert([
+      { bairro_name, coleta_type, inicio_coleta, dias_coleta, coordinates },
+    ]);
+
+    if (insertError) {
+      return res.status(500).json({ error: insertError.message });
+    }
+    res.status(201).json(insertData);
+  } else {
+    res.status(404).json({ error: 'Bairro not found' });
   }
-  res.status(201).json(data);
 });
 
 app.listen(port, () => {
