@@ -43,7 +43,7 @@ async function obterRotas() {
     }
 }
 
-export { supabase, adicionarRota, obterRotas };
+export { supabase, adicionarRota, obterRotas,};
 
 
 // adicionarRota('Centro', '08:00', 'Segunda-feira');
