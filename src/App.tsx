@@ -64,6 +64,8 @@ const blueIcon = new L.Icon({
 
 const App: React.FC = () => {
   const [bairros, setBairros] = useState<Bairro[]>([]);
+  const [filteredBairros, setFilteredBairros] = useState<Bairro[]>([]);
+  const [coletaTypeFilter, setColetaTypeFilter] = useState<string>('');
   const bairroNameRef = useRef<HTMLInputElement>(null);
   const coletaTypeRef = useRef<HTMLSelectElement>(null);
   const inicioColetaRef = useRef<HTMLSelectElement>(null);
@@ -98,6 +100,7 @@ const App: React.FC = () => {
         dias_coleta: bairro.dias_coleta.split(',').map(dia => dia.trim())
       }));
       setBairros(fetchedBairros);
+      setFilteredBairros(fetchedBairros);
     } catch (error) {
       console.error('Error fetching bairros from DB:', error);
     }
@@ -122,6 +125,7 @@ const App: React.FC = () => {
           dias_coleta: savedBairro.dias_coleta.split(',').map(dia => dia.trim())
         };
         setBairros(prevBairros => [...prevBairros, newBairro]);
+        setFilteredBairros(prevBairros => [...prevBairros, newBairro]);
       }
       console.log('Saved bairro to DB:', response.data);
     } catch (error) {
@@ -149,11 +153,21 @@ const App: React.FC = () => {
     setSelectedDias(newValue as { label: string, value: string }[]);
   };
 
+  const handleFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    setColetaTypeFilter(value);
+    if (value) {
+      setFilteredBairros(bairros.filter(bairro => bairro.coleta_type === value));
+    } else {
+      setFilteredBairros(bairros);
+    }
+  };
+
   return (
     <div className='container'>
       <MapContainer className='map-container' center={[-3.71722, -38.54333]} zoom={13}>
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-        {bairros.map((bairro, index) => (
+        {filteredBairros.map((bairro, index) => (
           <React.Fragment key={index}>
             {bairro.coordinates.length > 0 && (
               <Marker 
@@ -177,7 +191,7 @@ const App: React.FC = () => {
           </React.Fragment>
         ))}
       </MapContainer>
-      <div className='box-content'>
+    <div className='box-content'>
       <form onSubmit={handleBairroSubmit}>
         <input type="text" name="bairroName" placeholder="Nome do Bairro" ref={bairroNameRef} />
         <select name="coletaType" ref={coletaTypeRef}>
@@ -187,8 +201,8 @@ const App: React.FC = () => {
         </select>
         <select name="inicioColeta" ref={inicioColetaRef}>
           <option value="">Horário de Início da Coleta</option>
-          <option value="6:20AM">6:20 AM</option>
-          <option value="19:00PM">19:00 PM</option>
+          <option value="6:20AM">6:20AM</option>
+          <option value="19:00PM">19:00PM</option>
         </select>
         <Select 
           name="diasColeta" 
@@ -201,15 +215,22 @@ const App: React.FC = () => {
         <button type="submit">Adicionar Bairro</button>
       </form>
       <div className="table-container">
+                <h3>Filtrar:</h3>
+                <select onChange={handleFilterChange} value={coletaTypeFilter}>
+                  <option value="">Todos</option>
+                  <option value="diurna">Diurna</option>
+                  <option value="noturna">Noturna</option>
+                </select>
         <table>
           <thead>
             <tr>
               <th>Bairro</th>
               <th>Tipo de Coleta</th>
+             
             </tr>
           </thead>
           <tbody>
-            {bairros.map((bairro, index) => (
+            {filteredBairros.map((bairro, index) => (
               <tr key={index}>
                 <td>{bairro.bairro_name}</td>
                 <td>{bairro.coleta_type}</td>
