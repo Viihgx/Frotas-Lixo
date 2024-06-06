@@ -1,0 +1,77 @@
+body {
+    background-image: url('./assets/bgcadastro.png'); /* Use o caminho correto para a imagem */
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    margin: 0;
+    font-family: Arial, sans-serif;
+  }
+  .cadastro-container {
+    max-width: 600px;
+    margin: 100px auto; /* Ajuste a margem para posicionar o container no centro da tela */
+    padding: 20px;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    background-color: rgba(255, 255, 255, 0.9); /* Fundo semi-transparente */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    position: relative; /* Necessário para o alinhamento correto */
+    z-index: 1;
+  }
+  
+  .mensagem {
+    margin-bottom: 15px;
+    padding: 10px;
+    border-radius: 5px;
+    font-weight: bold;
+    text-align: center;
+  }
+  
+  .mensagem.sucesso {
+    background-color: #d4edda;
+    color: #155724;
+  }
+  
+  .mensagem.erro {
+    background-color: #f8d7da;
+    color: #721c24;
+  }
+  
+  label {
+    display: block;
+    margin-top: 10px;
+    color: #333;
+  }
+  
+  input[type="text"],
+  input[type="email"],
+  input[type="time"],
+  input[type="number"],
+  select {
+    width: 100%;
+    padding: 8px;
+    margin-top: 5px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 16px;
+  }
+  
+  button {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    margin-top: 20px;
+    border: none;
+    border-radius: 5px;
+    background-color: #28a745;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+  }
+  
+  button:hover {
+    background-color: #218838;
+  }
+  
+  form {
+    margin-bottom: 20px;
+  }
