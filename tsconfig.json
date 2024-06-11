@@ -20,6 +20,6 @@
     "composite": true,
     "outDir": "./dist"
   },
-  "include": ["src", "notificador-coleta/notifier.js"],
+  "include": ["src", "src/notificador-coleta"],
   "exclude": ["node_modules", "dist"]
 }

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { adicionarContato, deletarContato } from '../notificador-coleta/userserver';
+import React, { useState, useEffect } from 'react';
+import { adicionarContato, deletarContato, adicionarComentario, obterComentarios } from './notificador-coleta/userserver';
 import './CadastroContato.css';
 
 const bairrosDiurnos = [
@@ -39,12 +39,26 @@ const CadastroContato = () => {
   const [emailCadastro, setEmailCadastro] = useState('');
   const [emailCancelamento, setEmailCancelamento] = useState('');
   const [bairro, setBairro] = useState('');
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [horarioNotificacao, setHorarioNotificacao] = useState('');
   const [diasNotificacao, setDiasNotificacao] = useState([]);
   const [horasAntes, setHorasAntes] = useState(1); // Padrão para 1 hora antes
   const [mensagem, setMensagem] = useState('');
   const [tipoMensagem, setTipoMensagem] = useState(''); // 'sucesso' ou 'erro'
+  const [avaliacao, setAvaliacao] = useState(0);
+  const [comentario, setComentario] = useState('');
+  const [comentarios, setComentarios] = useState([]);
+
+  useEffect(() => {
+    const carregarComentarios = async () => {
+      const { success, data } = await obterComentarios();
+      if (success) {
+        setComentarios(data);
+      } else {
+        setMensagem('Erro ao carregar comentários');
+        setTipoMensagem('erro');
+      }
+    };
+    carregarComentarios();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -63,7 +77,6 @@ const CadastroContato = () => {
       setNome('');
       setEmailCadastro('');
       setBairro('');
-      setHorarioNotificacao('');
       setDiasNotificacao([]);
       setHorasAntes(1);
       setMensagem('Contato cadastrado com sucesso!');
@@ -91,20 +104,38 @@ const CadastroContato = () => {
     const selectedBairro = e.target.value;
     setBairro(selectedBairro);
     if (bairrosDiurnos.includes(selectedBairro)) {
-      setHorarioNotificacao('06:20');
       setDiasNotificacao(['Segunda-feira', 'Quarta-feira', 'Sexta-feira']);
     } else if (bairrosDiurnos2.includes(selectedBairro)) {
-      setHorarioNotificacao('06:20');
       setDiasNotificacao(['Terça-feira', 'Quinta-feira', 'Sábado']);
     } else if (bairrosNoturnos.includes(selectedBairro)) {
-      setHorarioNotificacao('19:00');
       setDiasNotificacao(['Segunda-feira', 'Quarta-feira', 'Sexta-feira']);
     } else if (bairrosNoturnos2.includes(selectedBairro)) {
-      setHorarioNotificacao('19:00');
       setDiasNotificacao(['Terça-feira', 'Quinta-feira', 'Sábado']);
     } else {
-      setHorarioNotificacao('');
       setDiasNotificacao([]);
+    }
+  };
+
+  const handleAvaliacao = (estrela) => {
+    setAvaliacao(estrela);
+  };
+
+  const handleComentarioChange = (e) => {
+    setComentario(e.target.value);
+  };
+
+  const handleComentarioSubmit = async (e) => {
+    e.preventDefault();
+    const result = await adicionarComentario(avaliacao, comentario);
+    if (result.success) {
+      setComentarios([...comentarios, { avaliacao, comentario, created_at: new Date().toISOString() }]);
+      setMensagem('Comentário enviado com sucesso!');
+      setTipoMensagem('sucesso');
+      setComentario('');
+      setAvaliacao(0);
+    } else {
+      setMensagem(`Erro ao enviar comentário: ${result.error}`);
+      setTipoMensagem('erro');
     }
   };
 
@@ -136,7 +167,7 @@ const CadastroContato = () => {
             <input
               type="number"
               value={horasAntes}
-              onChange={(e) => setHorasAntes(e.target.value)}
+              onChange={(e) => setHorasAntes(Number(e.target.value))}
               min="1"
               required
             />
@@ -152,6 +183,49 @@ const CadastroContato = () => {
         <input type="email" value={emailCancelamento} onChange={(e) => setEmailCancelamento(e.target.value)} required />
         <button type="submit">Cancelar Cadastro</button>
       </form>
+
+      <h2>Avalie nosso serviço:</h2>
+      <div className="avaliacao-estrelas">
+        {[1, 2, 3, 4, 5].map((estrela) => (
+          <span
+            key={estrela}
+            className={`estrela ${estrela <= avaliacao ? 'ativa' : ''}`}
+            onClick={() => handleAvaliacao(estrela)}
+          >
+            &#9733;
+          </span>
+        ))}
+      </div>
+
+      <h2>Deixe um comentário:</h2>
+      <form onSubmit={handleComentarioSubmit}>
+        <textarea
+          value={comentario}
+          onChange={handleComentarioChange}
+          placeholder="Deixe seu comentário aqui"
+          required
+        />
+        <button type="submit">Enviar Comentário</button>
+      </form>
+
+      <h2>Comentários:</h2>
+      <div className="lista-comentarios">
+        {comentarios.map((item, index) => (
+          <div key={index} className="comentario">
+            <div className="avaliacao-estrelas">
+              {[1, 2, 3, 4, 5].map((estrela) => (
+                <span
+                  key={estrela}
+                  className={`estrela ${estrela <= item.avaliacao ? 'ativa' : ''}`}
+                >
+                  &#9733;
+                </span>
+              ))}
+            </div>
+            <p>{item.comentario}</p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 };

@@ -3,7 +3,7 @@ import cors from 'cors';
 import { createClient } from '@supabase/supabase-js';
 
 const app = express();
-const port = 5000;
+const port = 4000;
 
 // Configurar Supabase
 const supabaseUrl = 'https://hacmiubwmcfgqfpcjpel.supabase.co';
@@ -25,7 +25,7 @@ app.get('/api/bairros', async (req, res) => {
 // Endpoint para adicionar um novo bairro
 app.post('/api/bairros', async (req, res) => {
   const { bairro_name, coleta_type, inicio_coleta, dias_coleta } = req.body;
-  
+
   // Fetch coordinates for the bairro
   const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${bairro_name},Fortaleza`);
   const data = await response.json();
@@ -40,10 +40,51 @@ app.post('/api/bairros', async (req, res) => {
     if (insertError) {
       return res.status(500).json({ error: insertError.message });
     }
+    // Verifique se insertData não está vazio e contém os dados esperados
+    if (!insertData || insertData.length === 0) {
+      return res.status(500).json({ error: 'Erro ao inserir o bairro.' });
+    }
     res.status(201).json(insertData);
+  } else {
+    res.status(404).json({ error: 'Bairro não encontrado' });
+  }
+});
+
+// Endpoint para editar um bairro
+app.put('/api/bairros/:id', async (req, res) => {
+  const { id } = req.params;
+  const { bairro_name, coleta_type, inicio_coleta, dias_coleta } = req.body;
+
+  const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${bairro_name},Fortaleza`);
+  const data = await response.json();
+  if (data.length > 0) {
+    const { lat, lon } = data[0];
+    const coordinates = [{ lat: parseFloat(lat), lon: parseFloat(lon) }];
+
+    const { data: updateData, error: updateError } = await supabase.from('bairros').update({
+      bairro_name, coleta_type, inicio_coleta, dias_coleta, coordinates
+    }).eq('id', id).select();
+
+    if (updateError) {
+      return res.status(500).json({ error: updateError.message });
+    }
+    if (updateData.length === 0) {
+      return res.status(404).json({ error: 'Bairro not found' });
+    }
+    res.status(200).json(updateData[0]); // Retorne o primeiro objeto atualizado
   } else {
     res.status(404).json({ error: 'Bairro not found' });
   }
+});
+
+// Endpoint para excluir um bairro
+app.delete('/api/bairros/:id', async (req, res) => {
+  const { id } = req.params;
+  const { data, error } = await supabase.from('bairros').delete().eq('id', id);
+  if (error) {
+    return res.status(500).json({ error: error.message });
+  }
+  res.status(200).json(data);
 });
 
 app.listen(port, () => {

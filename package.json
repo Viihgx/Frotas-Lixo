@@ -4,12 +4,13 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently \"vite\" \"npm run backend:dev\" \"npm run notificador:dev\"",
     "build": "tsc && vite build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "start": "node dist/db/server.js",
-    "backend:dev": "ts-node-dev src/db/server.ts"
+    "backend:dev": "ts-node-dev src/db/server.ts",
+    "notificador:dev": "node src/notificador-coleta/notifier.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.43.4",
@@ -22,6 +23,7 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-leaflet": "^4.2.1",
+    "react-router-dom": "^6.23.1",
     "react-select": "^5.8.0",
     "uuid": "^9.0.1"
   },
@@ -36,6 +38,7 @@
     "@typescript-eslint/eslint-plugin": "^7.2.0",
     "@typescript-eslint/parser": "^7.2.0",
     "@vitejs/plugin-react": "^4.2.1",
+    "concurrently": "^7.2.0",
     "eslint": "^8.57.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.6",
